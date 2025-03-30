@@ -1,0 +1,89 @@
+"use client";
+// This code is executed in the browser, so we can use the ethers library to interact with Ethereum
+import { ethers } from "ethers";
+
+// List of reliable Sepolia RPC endpoints
+const RPC_ENDPOINTS: string[] = [
+  "https://ethereum-sepolia-rpc.publicnode.com",
+  "https://rpc.sepolia.org",
+  "https://sepolia.drpc.org"
+];
+
+// Get a working provider with fallback
+async function getProvider(): Promise<ethers.JsonRpcProvider> {
+  for (const endpoint of RPC_ENDPOINTS) {
+    try {
+      const provider = new ethers.JsonRpcProvider(endpoint);
+      await provider.getBlockNumber(); // Test connection
+      return provider;
+    } catch (e) {
+      console.warn(`Failed with ${endpoint}, trying next...`);
+    }
+  }
+  throw new Error("All RPC endpoints failed");
+}
+
+// Display error message
+function showError(message: string): void {
+  const errorDiv = document.getElementById("error") as HTMLDivElement;
+  const loadingDiv = document.getElementById("loading") as HTMLDivElement;
+
+  errorDiv.textContent = message;
+  errorDiv.style.display = "block";
+  loadingDiv.style.display = "none";
+}
+
+interface FormProps {
+  onSubmit: (content: string) => void
+}
+
+// Initialize when DOM is loaded
+//document.addEventListener("DOMContentLoaded", () => {
+// Get DOM elements with type assertions
+export default function EtherCheck({ onSubmit }: FormProps) {
+
+
+  const checkBalanceBtn = document.getElementById("checkBalanceBtn") as HTMLButtonElement;
+  const ethAddressInput = document.getElementById("ethAddress") as HTMLInputElement;
+  const resultDiv = document.getElementById("result") as HTMLDivElement;
+  const errorDiv = document.getElementById("error") as HTMLDivElement;
+  const loadingDiv = document.getElementById("loading") as HTMLDivElement;
+  const balanceSpan = document.getElementById("balance") as HTMLSpanElement;
+
+  // Initialize UI
+  errorDiv.style.display = "none";
+  resultDiv.style.display = "none";
+  loadingDiv.style.display = "none";
+
+  // Balance check handler
+  checkBalanceBtn.addEventListener("click", async () => {
+    const address = ethAddressInput.value.trim();
+
+    // Reset UI
+    errorDiv.style.display = "none";
+    resultDiv.style.display = "none";
+    loadingDiv.style.display = "block";
+
+    // Validate address
+    if (!address || !ethers.isAddress(address)) {
+      showError("⚠️ Invalid Ethereum address!");
+      return;
+    }
+
+    try {
+      const provider = await getProvider();
+      const balance = await provider.getBalance(address);
+      const balanceInEth = ethers.formatEther(balance);
+
+      balanceSpan.textContent = `${balanceInEth} ETH`;
+      resultDiv.style.display = "block";
+    } catch (err) {
+      showError("❌ Network error. Please try again later.");
+      console.error("RPC Error:", err);
+    } finally {
+      loadingDiv.style.display = "none";
+    }
+  });
+};
+
+//});
